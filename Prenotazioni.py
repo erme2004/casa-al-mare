@@ -125,7 +125,7 @@ with col1:
 
 with col2:
     # NUOVA CASELLA: Approvazione Zia
-    approvazione_zia = st.checkbox("✅ Approvazione della Zia (Sblocca limite 31 giorni)")
+    approvazione_zia = st.checkbox("Approvazione della Zia (Sblocca limite 31 giorni)")
     
     note = st.text_area("Note (es. orario arrivo, ospiti extra...)", max_chars=300)
 
@@ -207,5 +207,6 @@ if not df.empty:
     st.dataframe(df_mostra, use_container_width=True, hide_index=True)
 else:
     st.info("Nessuna prenotazione al momento.")
+
 
 
