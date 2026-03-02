@@ -1,11 +1,45 @@
 import streamlit as st
 from datetime import date, timedelta
+import smtplib
+from email.message import EmailMessage
 
+# --- FUNZIONE PER INVIARE L'EMAIL ---
+def invia_notifica_email(nome_chi_prenota, inizio, fine, stato):
+    try:
+        mittente = st.secrets["email"]["mittente"]
+        password = st.secrets["email"]["password"]
+        email_admin = st.secrets["email"]["admin"]
+        
+        msg = EmailMessage()
+        msg['Subject'] = f"🏖️ Nuova prenotazione: {stato}"
+        msg['From'] = mittente
+        msg['To'] = email_admin
+        
+        testo = f"Ciao!\n\nÈ stata registrata una nuova prenotazione nel sistema Casa al Mare.\n\n"
+        testo += f"👤 Prenotato da: {nome_chi_prenota}\n"
+        testo += f"📅 Dal: {inizio}\n"
+        testo += f"📅 Al: {fine}\n"
+        testo += f"📌 Stato: {stato}\n\n"
+        
+        if stato == "In attesa":
+            testo += "⚠️ Questa prenotazione ha superato i 31 giorni. Entra nel sito per Approvarla o Rifiutarla!"
+            
+        msg.set_content(testo)
+        
+        # Connessione al server di Gmail e invio
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+            smtp.login(mittente, password)
+            smtp.send_message(msg)
+            
+    except Exception as e:
+        # Se l'email fallisce, non blocchiamo l'app, stampiamo solo l'errore di nascosto
+        print(f"Errore email: {e}")
+
+# --- FUNZIONE PRINCIPALE DEL FORM ---
 def gestisci_prenotazione(df, sheet):
     st.header("Aggiungi una prenotazione")
     col1, col2 = st.columns(2)
 
-    # L'app sa già chi sei e che ruolo hai!
     nome_utente = st.session_state["nome_utente"]
     ruolo_utente = st.session_state["ruolo"]
 
@@ -32,10 +66,8 @@ def gestisci_prenotazione(df, sheet):
             if data_inizio >= data_fine:
                 st.error("⚠️ La partenza deve essere dopo l'arrivo.")
             else:
-                # --- LOGICA DELLO STATO ---
                 stato_prenotazione = "Confermata"
                 
-                # Se NON è Admin e supera i 31 giorni -> Diventa "In attesa"
                 if ruolo_utente != "Admin" and data_inizio > data_limite_inizio:
                     stato_prenotazione = "In attesa"
                     st.warning("⏳ Data oltre i 31 giorni. La prenotazione sarà 'In attesa' di conferma da un Admin.")
@@ -58,8 +90,14 @@ def gestisci_prenotazione(df, sheet):
                     costo = 0 if ruolo_utente == "Admin" else (durata + 1) * 10
                     
                     try:
-                        # Salviamo la 7° colonna "Stato"
-                        sheet.append_row([nome_utente, str(data_inizio), str(data_fine), costo, durata + 1, note, stato_prenotazione])
+                        inizio_str = data_inizio.strftime("%Y-%m-%d")
+                        fine_str = data_fine.strftime("%Y-%m-%d")
+                        
+                        sheet.append_row([nome_utente, inizio_str, fine_str, costo, durata + 1, note, stato_prenotazione])
+                        
+                        # ---> LA MAGIA: INVIAMO L'EMAIL QUI! <---
+                        invia_notifica_email(nome_utente, inizio_str, fine_str, stato_prenotazione)
+                        
                         if stato_prenotazione == "Confermata":
                             st.success("✅ Prenotazione Confermata e salvata!")
                         else:
