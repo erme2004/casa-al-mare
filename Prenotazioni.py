@@ -101,7 +101,7 @@ with col_calendario:
     """
     calendar(events=calendar_events, options=calendar_options, custom_css=css_calendario)
 
-# --- SEZIONE DI PRENOTAZIONE ---
+# --- SEZIONE DI PRENOTAZIONE (Con nuova regola 31 giorni) ---
 st.header("Aggiungi una prenotazione")
 col1, col2 = st.columns(2)
 
@@ -111,10 +111,18 @@ with col1:
     
     oggi = date.today()
     domani = oggi + timedelta(days=1)
-    date_selezionate = st.date_input("Seleziona Arrivo e Partenza", value=(oggi, domani), min_value=oggi, format="DD/MM/YYYY")
+    
+    # Calcoliamo la data limite per i "comuni mortali" (31 giorni da oggi)
+    data_limite_inizio = oggi + timedelta(days=31)
+    
+    date_selezionate = st.date_input(
+        "Seleziona Arrivo e Partenza", 
+        value=(oggi, domani), 
+        min_value=oggi, 
+        format="DD/MM/YYYY"
+    )
 
 with col2:
-    # AGGIUNTA: Campo Note con limite 300 caratteri
     note = st.text_area("Note (es. orario arrivo, ospiti extra...)", max_chars=300)
 
 submit = st.button("Prenota")
@@ -124,11 +132,25 @@ if submit:
         st.error("⚠️ Seleziona sia la data di arrivo che quella di partenza!")
     else:
         data_inizio, data_fine = date_selezionate
+        
+        # --- LOGICA DI CONTROLLO DATE ---
+        errore_regola = False
+        
         if nome == "Scegli un nome...":
             st.error("⚠️ Seleziona un nome!")
+            errore_regola = True
+        
         elif data_inizio >= data_fine:
             st.error("⚠️ La partenza deve essere dopo l'arrivo.")
-        else:
+            errore_regola = True
+            
+        # NUOVA REGOLA: Se non è Zia Terry, l'inizio non può essere oltre i 31 giorni da oggi
+        elif nome != "Zia Terry" and data_inizio > data_limite_inizio:
+            st.error(f"⚠️ Prenotazione negata: Solo Zia Terry può prenotare con più di 31 giorni di anticipo. Per te, la data di inizio massima consentita è il {data_limite_inizio.strftime('%d/%m/%Y')}.")
+            errore_regola = True
+
+        # Se i controlli base e la regola dei 31 giorni sono passati, controlliamo le sovrapposizioni
+        if not errore_regola:
             sovrapposizione = False
             for _, row in df.iterrows():
                 if max(data_inizio, row['Data Inizio']) < min(data_fine, row['Data Fine']):
@@ -143,13 +165,11 @@ if submit:
                 costo = 0 if nome == "Zia Terry" else (durata + 1) * 10
                 
                 try:
-                    # AGGIORNATO: Aggiungiamo la nota alla riga di Google Sheets
                     sheet.append_row([nome, str(data_inizio), str(data_fine), costo, durata + 1, note])
-                    st.success("✅ Prenotazione aggiunta!")
+                    st.success("✅ Prenotazione aggiunta con successo!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Errore caricamento: {e}")
-
 # --- ZIONE TABELLA ---
 st.header("Lista Prenotazioni")
 if not df.empty:
@@ -174,3 +194,4 @@ if not df.empty:
     st.dataframe(df_mostra, use_container_width=True, hide_index=True)
 else:
     st.info("Nessuna prenotazione al momento.")
+
