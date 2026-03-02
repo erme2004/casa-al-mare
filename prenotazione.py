@@ -22,7 +22,7 @@ def invia_notifica_email(nome_chi_prenota, inizio, fine, stato):
         testo += f"📌 Stato: {stato}\n\n"
         
         if stato == "In attesa":
-            testo += "⚠️ Questa prenotazione ha superato i 31 giorni. Entra nel sito per Approvarla o Rifiutarla! /n https://casa-al-mare-q7nnfnv2d4xihirhpzat3d.streamlit.app/"
+            testo += "⚠️ Questa prenotazione ha superato i 31 giorni. Entra nel sito per Approvarla o Rifiutarla! \n https://casa-al-mare-q7nnfnv2d4xihirhpzat3d.streamlit.app/"
             
         msg.set_content(testo)
         
@@ -105,4 +105,5 @@ def gestisci_prenotazione(df, sheet):
                         st.rerun()
                     except Exception as e:
                         st.error(f"Errore: {e}")
+
 
