@@ -1,5 +1,11 @@
 import streamlit as st
 import time
+import hashlib # Il nostro "tritacarne" per criptare le password!
+
+# --- FUNZIONE PER CRIPTARE ---
+def cripta_password(password):
+    # Trasforma la password in una stringa illeggibile di 64 caratteri
+    return hashlib.sha256(password.encode()).hexdigest()
 
 def mostra_login(df_utenti, sheet_utenti):
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -7,7 +13,6 @@ def mostra_login(df_utenti, sheet_utenti):
     with col2:
         st.title("🏡 Casa al Mare")
         
-        # Creiamo le due linguette (Tabs) in alto
         tab_login, tab_registrazione = st.tabs(["🔑 Login", "📝 Registrati"])
         
         # --- SCHEDA LOGIN ---
@@ -23,9 +28,14 @@ def mostra_login(df_utenti, sheet_utenti):
                         st.error("⚠️ Nessun utente nel database! Registrati prima.")
                     elif email_inserita in df_utenti['Email'].str.lower().values:
                         utente = df_utenti[df_utenti['Email'].str.lower() == email_inserita].iloc[0]
-                        password_corretta = str(utente['Password'])
                         
-                        if password_inserita == password_corretta:
+                        # Prendiamo la password criptata salvata sul foglio
+                        password_salvata_criptata = str(utente['Password'])
+                        
+                        # Criptiamo la password appena digitata per vedere se sono uguali!
+                        password_inserita_criptata = cripta_password(password_inserita)
+                        
+                        if password_inserita_criptata == password_salvata_criptata:
                             st.session_state["autenticato"] = True
                             st.session_state["email_utente"] = utente['Email']
                             st.session_state["nome_utente"] = utente['Nome']
@@ -50,7 +60,6 @@ def mostra_login(df_utenti, sheet_utenti):
                 submit_registrazione = st.form_submit_button("Crea Account")
                 
                 if submit_registrazione:
-                    # Controlli di sicurezza
                     if not nuovo_nome or not nuova_email or not nuova_password:
                         st.error("⚠️ Compila tutti i campi!")
                     elif nuova_password != conferma_password:
@@ -58,20 +67,22 @@ def mostra_login(df_utenti, sheet_utenti):
                     elif not df_utenti.empty and nuova_email in df_utenti['Email'].str.lower().values:
                         st.error("⚠️ Questa email è già registrata! Torna al Login.")
                     else:
-                        # Tutto ok, scriviamo su Google Sheets!
                         try:
                             ruolo_base = "User" 
-                            sheet_utenti.append_row([nuova_email, nuovo_nome, ruolo_base, nuova_password])
                             
-                            # --- LA MAGIA DELL'AUTO-LOGIN! ---
-                            # Salviamo subito i dati nella sessione corrente
+                            # ---> LA MAGIA: Criptiamo la password prima di inviarla a Google Sheets! <---
+                            password_sicura = cripta_password(nuova_password)
+                            
+                            # Salviamo sul foglio la versione illeggibile
+                            sheet_utenti.append_row([nuova_email, nuovo_nome, ruolo_base, password_sicura])
+                            
                             st.session_state["autenticato"] = True
                             st.session_state["email_utente"] = nuova_email
                             st.session_state["nome_utente"] = nuovo_nome
                             st.session_state["ruolo"] = ruolo_base
                             
-                            st.success("✅ Registrazione completata! Accesso automatico in corso...")
-                            time.sleep(2) # Pausa più breve per un effetto scattante
-                            st.rerun() # Ricarica l'app ed entra direttamente!
+                            st.success("✅ Registrazione completata in modo sicuro! Accesso in corso...")
+                            time.sleep(2) 
+                            st.rerun() 
                         except Exception as e:
                             st.error(f"Errore durante il salvataggio: {e}")
