@@ -18,7 +18,7 @@ def connetti_google():
         
         client = gspread.authorize(creds)
         # ⚠️ INCOLLA QUI SOTTO IL LINK LUNGO DEL TUO FOGLIO GOOGLE!
-        sheet = client.open_by_url("INCOLLA_QUI_IL_TUO_LINK_LUNGO").sheet1
+        sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1EmvOi4YGiwAJuBh2z9jMvEAsljsFY46-PWbkrFfQyWY/edit?gid=0#gid=0").sheet1
         return sheet
     except Exception as e:
         return None
@@ -33,4 +33,5 @@ def carica_dati(sheet):
     df.columns = df.columns.str.strip()
     df['Data Inizio'] = pd.to_datetime(df['Data Inizio']).dt.date
     df['Data Fine'] = pd.to_datetime(df['Data Fine']).dt.date
+
     return df
