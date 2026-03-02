@@ -40,5 +40,6 @@ else:
 
     mostra_calendario(df_prenotazioni)
     gestisci_prenotazione(df_prenotazioni, sheet_prenotazioni)
-    # MODIFICA: Ora passiamo il foglio alla tabella per far cliccare 'Approva' agli Admin!
-    mostra_tabella(df_prenotazioni, sheet_prenotazioni)
+    
+    # MODIFICA: Ora passiamo anche df_utenti alla tabella per fargli trovare l'email!
+    mostra_tabella(df_prenotazioni, sheet_prenotazioni, df_utenti)
