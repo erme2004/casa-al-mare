@@ -60,12 +60,18 @@ def mostra_login(df_utenti, sheet_utenti):
                     else:
                         # Tutto ok, scriviamo su Google Sheets!
                         try:
-                            ruolo_base = "User" # Tutti nascono "User"
-                            # Inseriamo i dati nell'ordine esatto delle colonne: Email, Nome, Ruolo, Password
+                            ruolo_base = "User" 
                             sheet_utenti.append_row([nuova_email, nuovo_nome, ruolo_base, nuova_password])
-                            st.success("✅ Registrazione completata con successo! Tra 3 secondi si aggiornerà la pagina.")
-                            time.sleep(3) # Pausa per far leggere il messaggio
-                            st.rerun() # Ricarica l'app
+                            
+                            # --- LA MAGIA DELL'AUTO-LOGIN! ---
+                            # Salviamo subito i dati nella sessione corrente
+                            st.session_state["autenticato"] = True
+                            st.session_state["email_utente"] = nuova_email
+                            st.session_state["nome_utente"] = nuovo_nome
+                            st.session_state["ruolo"] = ruolo_base
+                            
+                            st.success("✅ Registrazione completata! Accesso automatico in corso...")
+                            time.sleep(2) # Pausa più breve per un effetto scattante
+                            st.rerun() # Ricarica l'app ed entra direttamente!
                         except Exception as e:
                             st.error(f"Errore durante il salvataggio: {e}")
-
