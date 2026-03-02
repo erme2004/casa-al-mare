@@ -17,21 +17,24 @@ def connetti_google():
             creds = Credentials.from_service_account_file("chiavi.json", scopes=scopes)
         
         client = gspread.authorize(creds)
-        # ⚠️ INCOLLA QUI SOTTO IL LINK LUNGO DEL TUO FOGLIO GOOGLE!
-        sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1EmvOi4YGiwAJuBh2z9jMvEAsljsFY46-PWbkrFfQyWY/edit?gid=0#gid=0").sheet1
-        return sheet
+        
+        # ⚠️ RIMETTI QUI IL TUO LINK LUNGO!
+        file_google = client.open_by_url("INCOLLA_QUI_IL_TUO_LINK_LUNGO")
+        
+        # Ora prendiamo entrambi i fogli!
+        sheet_prenotazioni = file_google.worksheet("Foglio1") # Cambia "Foglio1" se il tuo foglio principale ha un altro nome
+        sheet_utenti = file_google.worksheet("Utenti")
+        
+        return sheet_prenotazioni, sheet_utenti
     except Exception as e:
-        return None
+        return None, None
 
 def carica_dati(sheet):
     if not sheet:
         return pd.DataFrame()
     dati = sheet.get_all_records()
     if not dati:
-        return pd.DataFrame(columns=["Nome", "Data Inizio", "Data Fine", "Costo", "Durata Pernottamento"])
+        return pd.DataFrame()
     df = pd.DataFrame(dati)
     df.columns = df.columns.str.strip()
-    df['Data Inizio'] = pd.to_datetime(df['Data Inizio']).dt.date
-    df['Data Fine'] = pd.to_datetime(df['Data Fine']).dt.date
-
     return df
