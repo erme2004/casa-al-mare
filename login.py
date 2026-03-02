@@ -51,7 +51,7 @@ def mostra_login(df_utenti, sheet_utenti):
                 
                 if submit_registrazione:
                     # Controlli di sicurezza
-                    if non nuovo_nome or not nuova_email or not nuova_password:
+                    if not nuovo_nome or not nuova_email or not nuova_password:
                         st.error("⚠️ Compila tutti i campi!")
                     elif nuova_password != conferma_password:
                         st.error("⚠️ Le password non combaciano!")
@@ -68,3 +68,4 @@ def mostra_login(df_utenti, sheet_utenti):
                             st.rerun() # Ricarica l'app
                         except Exception as e:
                             st.error(f"Errore durante il salvataggio: {e}")
+
