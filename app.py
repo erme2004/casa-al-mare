@@ -1,45 +1,54 @@
 import streamlit as st
+import pandas as pd
 
-# Importiamo le funzioni dai nostri file, incluso il nuovo login!
 from login import mostra_login
 from database import connetti_google, carica_dati
 from calendario import mostra_calendario
 from prenotazione import gestisci_prenotazione
 from tabella import mostra_tabella
 
-# --- CONFIGURAZIONE PAGINA ---
 st.set_page_config(page_title="Casa al Mare", page_icon="🏖️", layout="wide")
 
-# --- SISTEMA DI LOGIN (Il Buttafuori) ---
-# Se è la prima volta che l'utente apre il sito, impostiamo che non è autenticato
+# 1. Connessione a Google (lo facciamo subito così possiamo leggere gli utenti)
+sheet_prenotazioni, sheet_utenti = connetti_google()
+
+if sheet_prenotazioni is None or sheet_utenti is None:
+    st.error("⚠️ Impossibile connettersi a Google Sheets.")
+    st.stop()
+
+# Carichiamo i due database
+df_prenotazioni = carica_dati(sheet_prenotazioni)
+df_utenti = carica_dati(sheet_utenti)
+
+# --- SISTEMA DI LOGIN ---
 if "autenticato" not in st.session_state:
     st.session_state["autenticato"] = False
 
-# Se NON è autenticato, mostriamo SOLO la pagina di login
 if not st.session_state["autenticato"]:
-    mostra_login()
-
-# Se È autenticato, mostriamo tutto il resto del sito!
+    # 🎯 ECCO LA RIGA CHE DAVA ERRORE: Ora passiamo il database utenti al login!
+    mostra_login(df_utenti)
 else:
-    st.title("🏖️ Prenotazioni Casa al Mare")
+    # Mostriamo a chi appartiene la sessione!
+    ruolo = st.session_state["ruolo"]
+    nome = st.session_state["nome_utente"]
     
-    # (Opzionale) Un bottoncino nella barra laterale per fare il Log-Out
+    st.title(f"🏖️ Prenotazioni Casa al Mare")
+    st.caption(f"👤 Accesso effettuato come: **{nome}** (Livello: {ruolo})")
+    
     if st.sidebar.button("🚪 Esci / Logout"):
         st.session_state["autenticato"] = False
         st.rerun()
 
-    # 1. Ci connettiamo e scarichiamo i dati
-    sheet = connetti_google()
-    if sheet is None:
-        st.error("⚠️ Impossibile connettersi a Google Sheets.")
-        st.stop()
-    df = carica_dati(sheet)
+    # Formattiamo le date del database prenotazioni
+    if not df_prenotazioni.empty:
+        df_prenotazioni['Data Inizio'] = pd.to_datetime(df_prenotazioni['Data Inizio'], format="mixed", dayfirst=True).dt.date
+        df_prenotazioni['Data Fine'] = pd.to_datetime(df_prenotazioni['Data Fine'], format="mixed", dayfirst=True).dt.date
 
     # 2. Mostriamo il Calendario
-    mostra_calendario(df)
+    mostra_calendario(df_prenotazioni)
 
     # 3. Mostriamo l'area per prenotare
-    gestisci_prenotazione(df, sheet)
+    gestisci_prenotazione(df_prenotazioni, sheet_prenotazioni)
 
     # 4. Mostriamo la tabella in basso
-    mostra_tabella(df)
+    mostra_tabella(df_prenotazioni)
