@@ -9,23 +9,19 @@ from tabella import mostra_tabella
 
 st.set_page_config(page_title="Casa al Mare", page_icon="🏖️", layout="wide")
 
-# 1. Connessione a Google
 sheet_prenotazioni, sheet_utenti = connetti_google()
 
 if sheet_prenotazioni is None or sheet_utenti is None:
-    st.error("⚠️ Impossibile connettersi a Google Sheets. Controlla i permessi o il link!")
+    st.error("⚠️ Impossibile connettersi a Google Sheets.")
     st.stop()
 
-# Carichiamo i database
 df_prenotazioni = carica_dati(sheet_prenotazioni)
 df_utenti = carica_dati(sheet_utenti)
 
-# --- SISTEMA DI LOGIN ---
 if "autenticato" not in st.session_state:
     st.session_state["autenticato"] = False
 
 if not st.session_state["autenticato"]:
-    # ORA PASSIAMO ANCHE IL FOGLIO PER SCRIVERE I NUOVI UTENTI!
     mostra_login(df_utenti, sheet_utenti)
 else:
     ruolo = st.session_state["ruolo"]
@@ -44,4 +40,5 @@ else:
 
     mostra_calendario(df_prenotazioni)
     gestisci_prenotazione(df_prenotazioni, sheet_prenotazioni)
-    mostra_tabella(df_prenotazioni)
+    # MODIFICA: Ora passiamo il foglio alla tabella per far cliccare 'Approva' agli Admin!
+    mostra_tabella(df_prenotazioni, sheet_prenotazioni)
