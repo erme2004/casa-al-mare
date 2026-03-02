@@ -102,6 +102,7 @@ with col_calendario:
     calendar(events=calendar_events, options=calendar_options, custom_css=css_calendario)
 
 # --- SEZIONE DI PRENOTAZIONE (Con nuova regola 31 giorni) ---
+# --- SEZIONE DI PRENOTAZIONE (Con Approvazione Zia) ---
 st.header("Aggiungi una prenotazione")
 col1, col2 = st.columns(2)
 
@@ -112,7 +113,7 @@ with col1:
     oggi = date.today()
     domani = oggi + timedelta(days=1)
     
-    # Calcoliamo la data limite per i "comuni mortali" (31 giorni da oggi)
+    # Calcoliamo la data limite di 31 giorni
     data_limite_inizio = oggi + timedelta(days=31)
     
     date_selezionate = st.date_input(
@@ -123,6 +124,9 @@ with col1:
     )
 
 with col2:
+    # NUOVA CASELLA: Approvazione Zia
+    approvazione_zia = st.checkbox("✅ Approvazione della Zia (Sblocca limite 31 giorni)")
+    
     note = st.text_area("Note (es. orario arrivo, ospiti extra...)", max_chars=300)
 
 submit = st.button("Prenota")
@@ -144,12 +148,15 @@ if submit:
             st.error("⚠️ La partenza deve essere dopo l'arrivo.")
             errore_regola = True
             
-        # NUOVA REGOLA: Se non è Zia Terry, l'inizio non può essere oltre i 31 giorni da oggi
-        elif nome != "Zia Terry" and data_inizio > data_limite_inizio:
-            st.error(f"⚠️ Prenotazione negata: Solo Zia Terry può prenotare con più di 31 giorni di anticipo. Per te, la data di inizio massima consentita è il {data_limite_inizio.strftime('%d/%m/%Y')}.")
+        # MODIFICA REGOLA: 
+        # Se NON è Zia Terry 
+        # E l'approvazione non è spuntata
+        # E la data di inizio è oltre i 31 giorni... ALLORA BLOCCHIAMO.
+        elif nome != "Zia Terry" and not approvazione_zia and data_inizio > data_limite_inizio:
+            st.error(f"⚠️ Prenotazione negata: Oltre i 31 giorni è necessaria l'approvazione della Zia o devi essere Zia Terry!")
             errore_regola = True
 
-        # Se i controlli base e la regola dei 31 giorni sono passati, controlliamo le sovrapposizioni
+        # Se i controlli sono passati, controlliamo le sovrapposizioni
         if not errore_regola:
             sovrapposizione = False
             for _, row in df.iterrows():
@@ -164,12 +171,18 @@ if submit:
                 durata = (data_fine - data_inizio).days
                 costo = 0 if nome == "Zia Terry" else (durata + 1) * 10
                 
+                # Prepariamo la nota aggiungendo se è stata approvata dalla zia
+                nota_finale = note
+                if approvazione_zia and nome != "Zia Terry":
+                    nota_finale = f"[APPROVATA DALLA ZIA] {note}"
+
                 try:
-                    sheet.append_row([nome, str(data_inizio), str(data_fine), costo, durata + 1, note])
+                    sheet.append_row([nome, str(data_inizio), str(data_fine), costo, durata + 1, nota_finale])
                     st.success("✅ Prenotazione aggiunta con successo!")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Errore caricamento: {e}")
+
 # --- ZIONE TABELLA ---
 st.header("Lista Prenotazioni")
 if not df.empty:
@@ -194,4 +207,5 @@ if not df.empty:
     st.dataframe(df_mostra, use_container_width=True, hide_index=True)
 else:
     st.info("Nessuna prenotazione al momento.")
+
 
