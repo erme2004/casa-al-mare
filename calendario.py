@@ -14,19 +14,24 @@ def mostra_calendario(df):
                 fine = row['Data Fine']
                 durata = (fine - inizio).days
                 
-                # Sfondo diviso per mantenere i bordi
+                # Scegliamo il colore! Arancione se in attesa, rosso se confermata.
+                stato = row.get('Stato', 'Confermata')
+                colore_sfondo = "#FFA500" if stato == "In attesa" else "#d1435b"
+                
+                # Mettiamo un'etichetta al nome per farlo capire a tutti
+                titolo = f"{row['Nome']} (In attesa)" if stato == "In attesa" else str(row['Nome'])
+                
                 for i in range(durata + 1):
                     giorno = inizio + timedelta(days=i)
                     calendar_events.append({
                         "start": str(giorno),
                         "end": str(giorno + timedelta(days=1)),
                         "display": "background",
-                        "backgroundColor": "#d1435b"
+                        "backgroundColor": colore_sfondo
                     })
                 
-                # Testo centrato
                 calendar_events.append({
-                    "title": str(row['Nome']), 
+                    "title": titolo, 
                     "start": str(inizio),
                     "end": str(fine + timedelta(days=1)),
                     "backgroundColor": "transparent",
