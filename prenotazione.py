@@ -3,49 +3,61 @@ from datetime import date, timedelta
 import smtplib
 from email.message import EmailMessage
 
-# --- FUNZIONE PER INVIARE L'EMAIL ---
-def invia_notifica_email(nome_chi_prenota, inizio, fine, stato):
+# --- FUNZIONE PER INVIARE LA DOPPIA EMAIL ---
+def invia_notifiche(nome, email_utente, inizio, fine, stato):
     try:
         mittente = st.secrets["email"]["mittente"]
         password = st.secrets["email"]["password"]
         email_admin = st.secrets["email"]["admin"]
         
-        msg = EmailMessage()
-        msg['Subject'] = f"🏖️ Nuova prenotazione: {stato}"
-        msg['From'] = mittente
-        msg['To'] = email_admin
+        # 1. Email per l'Utente che ha prenotato
+        msg_user = EmailMessage()
+        msg_user['Subject'] = "🏖️ Riepilogo prenotazione Casa al Mare"
+        msg_user['From'] = mittente
+        msg_user['To'] = email_utente
         
-        testo = f"Ciao!\n\nÈ stata registrata una nuova prenotazione nel sistema Casa al Mare.\n\n"
-        testo += f"👤 Prenotato da: {nome_chi_prenota}\n"
-        testo += f"📅 Dal: {inizio}\n"
-        testo += f"📅 Al: {fine}\n"
-        testo += f"📌 Stato: {stato}\n\n"
+        testo_user = f"Ciao {nome}!\n\nAbbiamo registrato la tua richiesta per la Casa al Mare.\n"
+        testo_user += f"📅 Dal: {inizio}\n📅 Al: {fine}\n\n"
+        if stato == "Confermata":
+            testo_user += "✅ STATO: Confermata! Prepara le valigie.\n"
+        else:
+            testo_user += "⏳ STATO: In attesa. La tua richiesta supera i 31 giorni, ti avviseremo appena Zia Terry la approverà!\n"
+        msg_user.set_content(testo_user)
         
+        # 2. Email per l'Admin (Avviso)
+        msg_admin = EmailMessage()
+        msg_admin['Subject'] = f"🔔 Nuova prenotazione da {nome} ({stato})"
+        msg_admin['From'] = mittente
+        msg_admin['To'] = email_admin
+        
+        testo_admin = f"Ciao Admin!\n\nNuova prenotazione inserita da {nome}.\n"
+        testo_admin += f"📅 Dal: {inizio}\n📅 Al: {fine}\n📌 Stato: {stato}\n"
         if stato == "In attesa":
-            testo += "⚠️ Questa prenotazione ha superato i 31 giorni. Entra nel sito per Approvarla o Rifiutarla! \n\n https://casa-al-mare-q7nnfnv2d4xihirhpzat3d.streamlit.app/"
-            
-        msg.set_content(testo)
+            testo_admin += "\n⚠️ Entra nell'app per approvarla o rifiutarla dal Pannello di Controllo!"
+        msg_admin.set_content(testo_admin)
         
-        # Connessione al server di Gmail e invio
+        # Invio effettivo
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(mittente, password)
-            smtp.send_message(msg)
+            smtp.send_message(msg_user)
+            # Evitiamo di mandare due mail uguali a Zia Terry se è lei che prenota
+            if email_utente != email_admin:
+                smtp.send_message(msg_admin)
             
     except Exception as e:
-        # Se l'email fallisce, non blocchiamo l'app, stampiamo solo l'errore di nascosto
         print(f"Errore email: {e}")
 
-# --- FUNZIONE PRINCIPALE DEL FORM ---
+# --- FORM PRENOTAZIONE ---
 def gestisci_prenotazione(df, sheet):
     st.header("Aggiungi una prenotazione")
     col1, col2 = st.columns(2)
 
     nome_utente = st.session_state["nome_utente"]
     ruolo_utente = st.session_state["ruolo"]
+    email_utente = st.session_state["email_utente"] # Prendiamo la sua email dalla memoria!
 
     with col1:
         st.info(f"👤 Stai prenotando a nome di: **{nome_utente}**")
-        
         oggi = date.today()
         domani = oggi + timedelta(days=1)
         data_limite_inizio = oggi + timedelta(days=31)
@@ -95,17 +107,13 @@ def gestisci_prenotazione(df, sheet):
                         
                         sheet.append_row([nome_utente, inizio_str, fine_str, costo, durata + 1, note, stato_prenotazione])
                         
-                        # ---> LA MAGIA: INVIAMO L'EMAIL QUI! <---
-                        invia_notifica_email(nome_utente, inizio_str, fine_str, stato_prenotazione)
+                        # MANDIAMO L'EMAIL!
+                        invia_notifiche(nome_utente, email_utente, inizio_str, fine_str, stato_prenotazione)
                         
                         if stato_prenotazione == "Confermata":
-                            st.success("✅ Prenotazione Confermata e salvata!")
+                            st.success("✅ Prenotazione Confermata e salvata! Email inviata.")
                         else:
-                            st.success("✅ Richiesta inviata! Ora è 'In attesa' di approvazione.")
+                            st.success("✅ Richiesta inviata! Ora è 'In attesa'. Email di riepilogo inviata.")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Errore: {e}")
-
-
-
-
