@@ -21,26 +21,35 @@ def invia_notifiche(nome, email_utente, inizio, fine, stato):
         if stato == "Confermata":
             testo_user += "✅ STATO: Confermata! Prepara le valigie.\n"
         else:
-            testo_user += "⏳ STATO: In attesa. La tua richiesta supera i 31 giorni, ti avviseremo appena Zia Terry la approverà!\n"
+            testo_user += "⏳ STATO: In attesa. La tua richiesta supera i 31 giorni, ti avviseremo appena l'Admin la approverà!\n"
         msg_user.set_content(testo_user)
         
-        # 2. Email per l'Admin (Avviso)
+        # 2. Email per l'Admin (Sempre inviata!)
         msg_admin = EmailMessage()
-        msg_admin['Subject'] = f"🔔 Nuova prenotazione da {nome} ({stato})"
+        # Cambiamo l'oggetto in base allo stato per farlo saltare all'occhio
+        prefisso = "✅ NUOVA PRENOTAZIONE" if stato == "Confermata" else "⚠️ RICHIESTA IN ATTESA"
+        msg_admin['Subject'] = f"{prefisso} da {nome}"
         msg_admin['From'] = mittente
         msg_admin['To'] = email_admin
         
-        testo_admin = f"Ciao Admin!\n\nNuova prenotazione inserita da {nome}.\n"
-        testo_admin += f"📅 Dal: {inizio}\n📅 Al: {fine}\n📌 Stato: {stato}\n"
+        testo_admin = f"Ciao Admin!\n\nC'è un nuovo movimento sul sito della Casa al Mare.\n\n"
+        testo_admin += f"👤 Chi: {nome}\n"
+        testo_admin += f"📅 Periodo: dal {inizio} al {fine}\n"
+        testo_admin += f"📌 Stato: {stato}\n\n"
+        
         if stato == "In attesa":
-            testo_admin += "\n⚠️ Entra nell'app per approvarla o rifiutarla dal Pannello di Controllo!"
+            testo_admin += "👉 Azione richiesta: Entra nell'app per approvarla o rifiutarla."
+        else:
+            testo_admin += "ℹ️ Questa prenotazione è stata confermata automaticamente dal sistema."
+            
         msg_admin.set_content(testo_admin)
         
         # Invio effettivo
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
             smtp.login(mittente, password)
-            smtp.send_message(msg_user)
-            # Evitiamo di mandare due mail uguali a Zia Terry se è lei che prenota
+            smtp.send_message(msg_user) # Manda all'utente
+            
+            # Manda all'admin sempre (a meno che l'utente non sia l'admin stesso, per non intasargli la posta)
             if email_utente != email_admin:
                 smtp.send_message(msg_admin)
             
@@ -54,7 +63,7 @@ def gestisci_prenotazione(df, sheet):
 
     nome_utente = st.session_state["nome_utente"]
     ruolo_utente = st.session_state["ruolo"]
-    email_utente = st.session_state["email_utente"] # Prendiamo la sua email dalla memoria!
+    email_utente = st.session_state["email_utente"]
 
     with col1:
         st.info(f"👤 Stai prenotando a nome di: **{nome_utente}**")
@@ -82,21 +91,17 @@ def gestisci_prenotazione(df, sheet):
                 
                 if ruolo_utente != "Admin" and data_inizio > data_limite_inizio:
                     stato_prenotazione = "In attesa"
-                    st.warning("⏳ Data oltre i 31 giorni. La prenotazione sarà 'In attesa' di conferma da un Admin.")
+                    st.warning("⏳ Data oltre i 31 giorni. La prenotazione sarà 'In attesa' di conferma.")
 
                 sovrapposizione = False
-                chi_ha_prenotato, stato_esistente = "", ""
-                
                 if not df.empty:
                     for _, row in df.iterrows():
                         if max(data_inizio, row['Data Inizio']) < min(data_fine, row['Data Fine']):
                             sovrapposizione = True
-                            chi_ha_prenotato = row.get('Nome', 'Sconosciuto')
-                            stato_esistente = row.get('Stato', 'Confermata')
                             break
                 
                 if sovrapposizione:
-                    st.error(f"❌ Errore: Le date si sovrappongono con {chi_ha_prenotato} (Stato: {stato_esistente})!")
+                    st.error("❌ Errore: Le date si sovrappongono con una prenotazione esistente!")
                 else:
                     durata = (data_fine - data_inizio).days
                     costo = 0 if ruolo_utente == "Admin" else (durata + 1) * 10
@@ -107,13 +112,10 @@ def gestisci_prenotazione(df, sheet):
                         
                         sheet.append_row([nome_utente, inizio_str, fine_str, costo, durata + 1, note, stato_prenotazione])
                         
-                        # MANDIAMO L'EMAIL!
+                        # INVIO NOTIFICHE (Ora l'Admin riceve tutto!)
                         invia_notifiche(nome_utente, email_utente, inizio_str, fine_str, stato_prenotazione)
                         
-                        if stato_prenotazione == "Confermata":
-                            st.success("✅ Prenotazione Confermata e salvata! Email inviata.")
-                        else:
-                            st.success("✅ Richiesta inviata! Ora è 'In attesa'. Email di riepilogo inviata.")
+                        st.success(f"✅ Prenotazione {stato_prenotazione} salvata! Email inviata.")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Errore: {e}")
