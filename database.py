@@ -19,7 +19,7 @@ def connetti_google():
         client = gspread.authorize(creds)
         
         # ⚠️ RIMETTI QUI IL TUO LINK LUNGO!
-        file_google = client.open_by_url("INCOLLA_QUI_IL_TUO_LINK_LUNGO")
+        file_google = client.open_by_url("https://docs.google.com/spreadsheets/d/1EmvOi4YGiwAJuBh2z9jMvEAsljsFY46-PWbkrFfQyWY/edit?gid=1075214251#gid=1075214251")
         
         # Ora prendiamo entrambi i fogli!
         sheet_prenotazioni = file_google.worksheet("Foglio1") # Cambia "Foglio1" se il tuo foglio principale ha un altro nome
@@ -38,3 +38,4 @@ def carica_dati(sheet):
     df = pd.DataFrame(dati)
     df.columns = df.columns.str.strip()
     return df
+
