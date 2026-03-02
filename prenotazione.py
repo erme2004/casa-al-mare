@@ -46,7 +46,7 @@ def invia_notifiche(nome, email_utente, inizio, fine, stato):
                     testo_admin += f"👤 Utente: {nome}\n"
                     testo_admin += f"📅 Periodo: dal {inizio} al {fine}\n"
                     testo_admin += f"📌 Stato attuale: In attesa\n\n"
-                    testo_admin += "👉 Vai nel Pannello di Controllo dell'app per gestirla."
+                    testo_admin += "👉 Vai nel Pannello di Controllo dell'app per gestirla. \n\nhttps://casa-al-mare-q7nnfnv2d4xihirhpzat3d.streamlit.app/"
                     
                     msg_admin.set_content(testo_admin)
                     smtp.send_message(msg_admin)
@@ -113,3 +113,4 @@ def gestisci_prenotazione(df, sheet):
                         st.rerun()
                     except Exception as e:
                         st.error(f"Errore: {e}")
+
